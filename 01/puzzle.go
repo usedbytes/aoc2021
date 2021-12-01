@@ -30,8 +30,21 @@ func doLines(filename string, do func(line string) error) error {
 }
 
 func run() error {
-	last := -1
+	var err error
+
+	lastSum := -1
 	deeper := 0
+
+	windowSize := 1
+	if len(os.Args) > 2 {
+		windowSize, err = strconv.Atoi(os.Args[2])
+		if err != nil {
+			return err
+		}
+	}
+
+	window := make([]int, windowSize)
+	idx := 0
 
 	if err := doLines(os.Args[1], func(line string) error {
 		this, err := strconv.Atoi(line)
@@ -39,10 +52,21 @@ func run() error {
 			return err
 		}
 
-		if last > 0 && this > last {
+		window[idx % windowSize] = this
+		idx++
+		if idx < windowSize {
+			return nil
+		}
+
+		thisSum := 0
+		for _, v := range window {
+			thisSum += v
+		}
+
+		if lastSum > 0 && thisSum > lastSum {
 			deeper++
 		}
-		last = this
+		lastSum = thisSum
 
 		return nil
 	}); err != nil {
