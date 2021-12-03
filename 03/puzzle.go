@@ -55,6 +55,29 @@ func filter(in []string, prefix string) []string {
 	return out
 }
 
+func decode(lines []string, rule func(current string, ones, zeroes int) string, filter func(lines []string, prefix string) []string) string {
+	result := ""
+
+	counts := countOnes(lines)
+	for i := 0; i < len(lines[0]); i++ {
+		count := counts[i]
+		zeroes := len(lines) - count
+		ones := count
+
+		result = rule(result, ones, zeroes)
+
+		if filter != nil {
+			lines = filter(lines, result)
+			if len(lines) <= 1 {
+				return lines[0]
+			}
+			counts = countOnes(lines)
+		}
+	}
+
+	return result
+}
+
 func run() error {
 	var lines []string
 
@@ -65,18 +88,23 @@ func run() error {
 		return err
 	}
 
-	gammaCounts := countOnes(lines)
-	gammaRate := ""
-
-	for _, count := range gammaCounts {
-		zeroes := len(lines) - count
-		ones := count
+	mostCommonRule := func(current string, ones, zeroes int) string {
 		if ones >= zeroes {
-			gammaRate += "1"
+			return current + "1"
 		} else {
-			gammaRate += "0"
+			return current + "0"
 		}
 	}
+
+	leastCommonRule := func(current string, ones, zeroes int) string {
+		if ones >= zeroes {
+			return current + "0"
+		} else {
+			return current + "1"
+		}
+	}
+
+	gammaRate := decode(lines, mostCommonRule, nil)
 
 	i64, err := strconv.ParseUint(gammaRate, 2, 32)
 	if err != nil {
@@ -86,68 +114,19 @@ func run() error {
 	epsilon := (^gamma) & ((1 << len(gammaRate)) - 1)
 	fmt.Println("Power consumption:", gamma * epsilon)
 
-	oxygenPrefix := ""
-	oxygenList := make([]string, len(lines))
-	copy(oxygenList, lines)
-
-	for len(oxygenList) > 1 {
-		for i := 0; i < len(lines[0]); i++ {
-			oxygenCounts := countOnes(oxygenList)
-			count := oxygenCounts[i]
-			zeroes := len(oxygenList) - count
-			ones := count
-
-			if ones >= zeroes {
-				oxygenPrefix += "1"
-			} else {
-				oxygenPrefix += "0"
-			}
-
-			oxygenList = filter(oxygenList, oxygenPrefix)
-			if len(oxygenList) <= 1 {
-				break
-			}
-		}
-	}
-
-	i64, err = strconv.ParseUint(oxygenList[0], 2, 32)
+	oxygen := decode(lines, mostCommonRule, filter)
+	i64, err = strconv.ParseUint(oxygen, 2, 32)
 	if err != nil {
 		return err
 	}
 	oxygenRating := int(i64)
 
-	co2Prefix := ""
-	co2List := make([]string, len(lines))
-	copy(co2List, lines)
-
-	for len(co2List) > 1 {
-		for i := 0; i < len(lines[0]); i++ {
-			co2Counts := countOnes(co2List)
-			count := co2Counts[i]
-			zeroes := len(co2List) - count
-			ones := count
-
-			if ones >= zeroes {
-				co2Prefix += "0"
-			} else {
-				co2Prefix += "1"
-			}
-
-			co2List = filter(co2List, co2Prefix)
-			if len(co2List) <= 1 {
-				break
-			}
-		}
-	}
-
-	i64, err = strconv.ParseUint(co2List[0], 2, 32)
+	co2 := decode(lines, leastCommonRule, filter)
+	i64, err = strconv.ParseUint(co2, 2, 32)
 	if err != nil {
 		return err
 	}
 	co2Rating := int(i64)
-
-	fmt.Println(oxygenList)
-	fmt.Println(co2List)
 
 	fmt.Println("Life Support Rating:", oxygenRating * co2Rating)
 
