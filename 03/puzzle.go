@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 )
 
 func doLines(filename string, do func(line string) error) error {
@@ -28,41 +30,126 @@ func doLines(filename string, do func(line string) error) error {
 	return nil
 }
 
-func run() error {
-	var oneCounts []int
-	numBits := 0
-	numLines := 0
+func countOnes(lines []string) []int {
+	counts := make([]int, len(lines[0]))
 
-	if err := doLines(os.Args[1], func(line string) error {
-		if numBits == 0 {
-			numBits = len(line)
-			oneCounts = make([]int, numBits)
-		}
-
+	for _, line := range lines {
 		for i, c := range line {
 			if c == '1' {
-				oneCounts[i]++
+				counts[i]++
 			}
 		}
+	}
 
-		numLines++
+	return counts
+}
 
+func filter(in []string, prefix string) []string {
+	var out []string
+	for _, s := range in {
+		if strings.HasPrefix(s, prefix) {
+			out = append(out, s)
+		}
+	}
+
+	return out
+}
+
+func run() error {
+	var lines []string
+
+	if err := doLines(os.Args[1], func(line string) error {
+		lines = append(lines, line)
 		return nil
 	}); err != nil {
 		return err
 	}
 
-	output := 0
-	for i, count := range oneCounts {
-		if count > numLines / 2 {
-			output |= (1 << (numBits - i - 1))
+	gammaCounts := countOnes(lines)
+	gammaRate := ""
+
+	for _, count := range gammaCounts {
+		zeroes := len(lines) - count
+		ones := count
+		if ones >= zeroes {
+			gammaRate += "1"
+		} else {
+			gammaRate += "0"
 		}
 	}
 
-	gamma := output
-	epsilon := (^output) & ((1 << numBits) - 1)
+	i64, err := strconv.ParseUint(gammaRate, 2, 32)
+	if err != nil {
+		return err
+	}
+	gamma := int(i64)
+	epsilon := (^gamma) & ((1 << len(gammaRate)) - 1)
+	fmt.Println("Power consumption:", gamma * epsilon)
 
-	fmt.Println(gamma * epsilon)
+	oxygenPrefix := ""
+	oxygenList := make([]string, len(lines))
+	copy(oxygenList, lines)
+
+	for len(oxygenList) > 1 {
+		for i := 0; i < len(lines[0]); i++ {
+			oxygenCounts := countOnes(oxygenList)
+			count := oxygenCounts[i]
+			zeroes := len(oxygenList) - count
+			ones := count
+
+			if ones >= zeroes {
+				oxygenPrefix += "1"
+			} else {
+				oxygenPrefix += "0"
+			}
+
+			oxygenList = filter(oxygenList, oxygenPrefix)
+			if len(oxygenList) <= 1 {
+				break
+			}
+		}
+	}
+
+	i64, err = strconv.ParseUint(oxygenList[0], 2, 32)
+	if err != nil {
+		return err
+	}
+	oxygenRating := int(i64)
+
+	co2Prefix := ""
+	co2List := make([]string, len(lines))
+	copy(co2List, lines)
+
+	for len(co2List) > 1 {
+		for i := 0; i < len(lines[0]); i++ {
+			co2Counts := countOnes(co2List)
+			count := co2Counts[i]
+			zeroes := len(co2List) - count
+			ones := count
+
+			if ones >= zeroes {
+				co2Prefix += "0"
+			} else {
+				co2Prefix += "1"
+			}
+
+			co2List = filter(co2List, co2Prefix)
+			if len(co2List) <= 1 {
+				break
+			}
+		}
+	}
+
+	i64, err = strconv.ParseUint(co2List[0], 2, 32)
+	if err != nil {
+		return err
+	}
+	co2Rating := int(i64)
+
+	fmt.Println(oxygenList)
+	fmt.Println(co2List)
+
+	fmt.Println("Life Support Rating:", oxygenRating * co2Rating)
 
 	return nil
 }
