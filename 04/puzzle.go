@@ -131,12 +131,23 @@ func run() error {
 	}
 
 	// Play the game
+	numWins := 0
 	for _, m := range moves {
-		for _, b := range boards {
+		for i, b := range boards {
+			if b == nil {
+				continue
+			}
+
 			win, score := b.Mark(m)
 			if win {
-				fmt.Println(score * m)
-				return nil
+				boards[i] = nil
+				numWins++
+				if numWins == 1 {
+					fmt.Println("Part 1:", score * m)
+				} else if numWins == len(boards) {
+					fmt.Println("Part 2:", score * m)
+					return nil
+				}
 			}
 		}
 	}
