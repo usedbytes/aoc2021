@@ -48,6 +48,16 @@ func max(a, b int) int {
 	return b
 }
 
+func dir(a1, a2 int) int {
+	if a1 == a2 {
+		return 0
+	} else if a1 < a2 {
+		return 1
+	} else {
+		return -1
+	}
+}
+
 func run() error {
 
 	chart := make(map[Coord]int)
@@ -62,25 +72,25 @@ func run() error {
 		}
 
 		// Only considering horizontal/vertical for Part 1
-		if (x1 != x2) && (y1 != y2) {
+		if len(os.Args) < 3 && (x1 != x2) && (y1 != y2) {
 			return nil
 		}
 
-		// TODO: This doesn't work if lines aren't horizontal/vertical
-		for y := min(y1, y2); y <= max(y1, y2); y++ {
-			for x := min(x1, x2); x <= max(x1, x2); x++ {
-				c := Coord{ x, y }
-				if v, ok := chart[c]; ok {
-					// Already have at least one line at this Coord
-					chart[c] = v + 1
+		dirX := dir(x1, x2)
+		dirY := dir(y1, y2)
 
-					// Count specifically two or more for Part 1
-					if v == 1 {
-						numTwo++
-					}
-				} else {
-					chart[c] = 1
+		for x, y := x1, y1; (x != (x2 + dirX)) || (y != (y2 + dirY)); x, y = x + dirX, y + dirY {
+			c := Coord{ x, y }
+			if v, ok := chart[c]; ok {
+				// Already have at least one line at this Coord
+				chart[c] = v + 1
+
+				// Count specifically two or more for Part 1
+				if v == 1 {
+					numTwo++
 				}
+			} else {
+				chart[c] = 1
 			}
 		}
 
