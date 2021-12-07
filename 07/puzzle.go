@@ -16,10 +16,14 @@ func abs(x int) int {
 	return x
 }
 
-func sad(vals []int, x int) int {
+func costAbsDiff(a, b int) int {
+	return abs(a - b)
+}
+
+func sumOfCosts(vals []int, x int, cost func(a, b int) int) int {
 	res := 0
 	for _, v := range vals {
-		res += abs(v - x)
+		res += cost(v, x)
 	}
 
 	return res
@@ -68,7 +72,7 @@ func run() error {
 	minDiff := 0x7fffffff
 
 	for p := minPos; p <= maxPos; p++ {
-		diff := sad(positions, p)
+		diff := sumOfCosts(positions, p, costAbsDiff)
 		if diff < minDiff {
 			minDiff = diff
 		}
