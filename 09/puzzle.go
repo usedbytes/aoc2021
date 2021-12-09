@@ -41,6 +41,12 @@ func get(heightMap [][]int, x, y, oob int) int {
 	return heightMap[y][x]
 }
 
+type LowPoint struct {
+	X, Y int
+	Height int
+	BasinSize int
+}
+
 func run() error {
 
 	var heightMap [][]int
@@ -61,7 +67,7 @@ func run() error {
 		return err
 	}
 
-	lowPoints := []int{}
+	lowPoints := []*LowPoint{}
 
 	for y := 0; y < len(heightMap); y++ {
 		for x := 0; x < len(heightMap[0]); x++ {
@@ -71,14 +77,19 @@ func run() error {
 			   get(heightMap, x + 1, y, 10) > here &&
 			   get(heightMap, x, y - 1, 10) > here &&
 			   get(heightMap, x, y + 1, 10) > here {
-				lowPoints = append(lowPoints, here)
+				pt := LowPoint{
+					X: x,
+					Y: y,
+					Height: here,
+				}
+				lowPoints = append(lowPoints, &pt)
 			}
 		}
 	}
 
 	part1 := 0
 	for _, p := range lowPoints {
-		part1 += (p + 1)
+		part1 += (p.Height + 1)
 	}
 
 	fmt.Println(part1)
