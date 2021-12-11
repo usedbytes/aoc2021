@@ -64,7 +64,9 @@ func run() error {
 		{  1,  1, },
 	}
 
-	for step := 0; step < nsteps; step++ {
+	finished := false
+	step := 0
+	for !finished {
 		flashed := make(map[Point]bool)
 
 		// First all octopodes increment
@@ -110,9 +112,17 @@ func run() error {
 		}
 
 		flashes += len(flashed)
-	}
+		step++
 
-	fmt.Println(flashes)
+		if (step == nsteps) {
+			fmt.Println("Part 1:", flashes)
+		}
+
+		if len(flashed) == len(cavern) {
+			fmt.Println("Part 2:", step)
+			finished = true
+		}
+	}
 
 	return nil
 }
