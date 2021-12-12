@@ -43,7 +43,50 @@ func isLower(a string) bool {
 	return strings.ToLower(a) == a
 }
 
-func explore(system map[string][]string, from string, visited []string) [][]string {
+func part1CanVisit(visited []string, node string) bool {
+	if contains(visited, node) && isLower(node) {
+		return false
+	}
+
+	return true
+}
+
+func part2CanVisit(visited []string, node string) bool {
+	counts := make(map[string]int)
+
+	if !isLower(node) {
+		return true
+	}
+
+	if node == "start" {
+		return false
+	}
+
+	if node == "end" {
+		return true
+	}
+
+	for _, n := range visited {
+		if isLower(n) {
+			counts[n] = counts[n] + 1
+		}
+	}
+
+	if counts[node] > 1 {
+		return false
+	}
+
+	visitedBefore := contains(visited, node)
+	for _, v := range counts {
+		if v > 1 && visitedBefore {
+			return false
+		}
+	}
+
+	return true
+}
+
+func explore(system map[string][]string, from string, visited []string, canVisit func([]string, string) bool) [][]string {
 	conns := system[from]
 	visited = append(visited, from)
 
@@ -58,11 +101,11 @@ func explore(system map[string][]string, from string, visited []string) [][]stri
 			continue
 		}
 
-		if contains(visited, l) && isLower(l) {
+		if !canVisit(visited, l) {
 			continue
 		}
 
-		routes = append(routes, explore(system, l, visited)...)
+		routes = append(routes, explore(system, l, visited, canVisit)...)
 	}
 
 	return routes
@@ -85,8 +128,11 @@ func run() error {
 		return err
 	}
 
-	routes := explore(system, "start", []string{})
-	fmt.Println(len(routes))
+	routes := explore(system, "start", []string{}, part1CanVisit)
+	fmt.Println("Part 1:", len(routes))
+
+	routes = explore(system, "start", []string{}, part2CanVisit)
+	fmt.Println("Part 2:", len(routes))
 
 	return nil
 }
