@@ -133,18 +133,57 @@ func run() error {
 		return in
 	}
 
-	if instructions[0].Direction == "horizontal" {
-		f = wrapXformFunc(f, makeHorizontalFold(instructions[0].Line))
-	} else {
-		f = wrapXformFunc(f, makeVerticalFold(instructions[0].Line))
+	for i, ins := range instructions {
+		if ins.Direction == "horizontal" {
+			f = wrapXformFunc(f, makeHorizontalFold(ins.Line))
+		} else {
+			f = wrapXformFunc(f, makeVerticalFold(ins.Line))
+		}
+
+		if i == 0 {
+			paper := make(map[Point]bool)
+			for _, c := range coords {
+				paper[f(c)] = true
+			}
+
+			fmt.Println("Part 1:", len(paper))
+		}
 	}
 
+	// Do all the folds, store the eventual canvas dimensions
 	paper := make(map[Point]bool)
+	maxX := 0
+	maxY := 0
 	for _, c := range coords {
-		paper[f(c)] = true
+		newc := f(c)
+		paper[newc] = true
+		if newc.X > maxX {
+			maxX = newc.X
+		}
+		if newc.Y > maxY {
+			maxY = newc.Y
+		}
 	}
 
-	fmt.Println("Part 1:", len(paper))
+	// Make a canvas to print out our letters
+	canvas := make([][]rune, maxY + 1)
+	for i, row := range canvas {
+		row = make([]rune, maxX + 1)
+		for j, _ := range row {
+			row[j] = ' '
+		}
+		canvas[i] = row
+	}
+
+	// Draw the dots
+	for k, _ := range paper {
+		canvas[k.Y][k.X] = '#'
+	}
+
+	// Show the canvas!
+	for _, row := range canvas {
+		fmt.Println(string(row))
+	}
 
 	return nil
 }
