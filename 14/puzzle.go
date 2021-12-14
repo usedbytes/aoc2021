@@ -30,14 +30,24 @@ func doLines(filename string, do func(line string) error) error {
 }
 
 // Mutates a
-func add(a *[26]int, b [26]int) {
+func add(a *[26]uint64, b [26]uint64) {
 	for i, v := range b {
 		a[i] += v
 	}
 }
 
-func expandPair(rules map[string]byte, pair string, n int) [26]int {
-	res := [26]int{}
+type Tag struct {
+	Pair string
+	N int
+}
+
+func expandPair(rules map[string]byte, dp map[Tag][26]uint64, pair string, n int) [26]uint64 {
+	tag := Tag{ pair, n }
+	if res, ok := dp[tag]; ok {
+		return res
+	}
+
+	res := [26]uint64{}
 
 	if n == 0 {
 		return res
@@ -46,30 +56,34 @@ func expandPair(rules map[string]byte, pair string, n int) [26]int {
 	insert := rules[pair]
 	res[insert - 'A']++
 
-	add(&res, expandPair(rules, string([]byte{pair[0], insert}), n - 1))
-	add(&res, expandPair(rules, string([]byte{insert, pair[1]}), n - 1))
+	add(&res, expandPair(rules, dp, string([]byte{pair[0], insert}), n - 1))
+	add(&res, expandPair(rules, dp, string([]byte{insert, pair[1]}), n - 1))
+
+	dp[tag] = res
 
 	return res
 }
 
 // Returns count of letters inserted
-func expand(rules map[string]byte, template string, n int) [26]int {
-	res := [26]int{}
+func expand(rules map[string]byte, template string, n int) [26]uint64 {
+	res := [26]uint64{}
 	for _, l := range template {
 		res[l - 'A']++
 	}
 
+	dp := make(map[Tag][26]uint64)
+
 	for i := 0; i < len(template) - 1; i++ {
 		pair := template[i:i+2]
 
-		add(&res, expandPair(rules, pair, n))
+		add(&res, expandPair(rules, dp, pair, n))
 	}
 
 	return res
 }
 
-func min(l []int) int {
-	min := 0x7fffffff
+func min(l []uint64) uint64 {
+	min := ^uint64(0)
 
 	for _, v := range l {
 		if v != 0 && v < min {
@@ -80,8 +94,8 @@ func min(l []int) int {
 	return min
 }
 
-func max(l []int) int {
-	max := 0
+func max(l []uint64) uint64 {
+	max := uint64(0)
 
 	for _, v := range l {
 		if v > max {
@@ -114,8 +128,10 @@ func run() error {
 	}
 
 	res := expand(rules, template, 10)
-
 	fmt.Println("Part 1:", max(res[:])-min(res[:]))
+
+	res = expand(rules, template, 40)
+	fmt.Println("Part 2:", max(res[:])-min(res[:]))
 
 	return nil
 }
