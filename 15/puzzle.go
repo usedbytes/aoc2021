@@ -187,6 +187,31 @@ func run() error {
 	part1 := doAStar(start, part1Goal, part1Cavern)
 	fmt.Println("Part 1:", part1)
 
+	part2Cavern := func(p Point) int {
+		xTile, yTile := p.X / len(cavern[0]), p.Y / len(cavern)
+
+		if p.X < 0 || p.Y < 0 {
+			return -1
+		}
+
+		if xTile >= 5 || yTile >= 5 {
+			return -1
+		}
+
+		xOffs, yOffs := p.X % len(cavern[0]), p.Y % len(cavern)
+
+		// Annoying number system is 1-9
+		// Subtract 1, wrap to 0-8, add 1
+		v := cavern[yOffs][xOffs] - 1
+		v = (v + xTile + yTile) % 9
+		v += 1
+
+		return v
+	}
+	part2Goal := Point{ len(cavern[0]) * 5 - 1, len(cavern) * 5 - 1 }
+	part2 := doAStar(start, part2Goal, part2Cavern)
+	fmt.Println("Part 2:", part2)
+
 	return nil
 }
 
