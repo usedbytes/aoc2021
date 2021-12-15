@@ -93,6 +93,68 @@ func (nq *NodeQueue) Pop() interface{} {
 	return item
 }
 
+func doAStar(start, goal Point, cavern func(Point) int) int {
+	// Map from Point to best cost to reach Point
+	tree := make(map[Point]int)
+
+	// Queue of nodes to explore next
+	var queue NodeQueue
+	heap.Init(&queue)
+
+	// Cost function from Point to goal
+	nodeGuess := func(p Point) int {
+		return (goal.X - p.X) + (goal.Y - p.Y)
+	}
+
+	dirs := [][2]int {
+		{  0, -1 },
+		{ -1,  0 },
+		{  1,  0 },
+		{  0,  1 },
+	}
+
+	// Seed the start node
+	tree[start] = 0
+	heap.Push(&queue, &QueueNode{
+		Point: start,
+		Guess: nodeGuess(start),
+	})
+
+	// Go!
+	for i := heap.Pop(&queue); i != nil ; i = heap.Pop(&queue) {
+		node := i.(*QueueNode)
+		current := node.Point
+
+		if current == goal {
+			break
+		}
+
+		for _, d := range dirs {
+			next := Point{ current.X + d[0], current.Y + d[1] }
+			v := cavern(next)
+			if v < 0 {
+				continue
+			}
+
+			costNext := tree[current] + v
+			if v, ok := tree[next]; !ok || costNext < v {
+				// This is the best route to "next" we've
+				// found so far
+				tree[next] = costNext
+
+				// Explore around 'next' with this new-found
+				// route
+				heap.Push(&queue, &QueueNode{
+					Point: next,
+					Guess: costNext + nodeGuess(next),
+				});
+			}
+		}
+	}
+
+	return tree[goal]
+}
+
 func run() error {
 	cavern := [][]int{}
 
@@ -112,71 +174,18 @@ func run() error {
 		return err
 	}
 
-	sizeX := len(cavern[0])
-	sizeY := len(cavern)
+	start := Point{0, 0}
 
-	// Implements A* search
-
-	// Map from Point to best cost to reach Point
-	tree := make(map[Point]int)
-
-	// Queue of nodes to explore next
-	var queue NodeQueue
-	heap.Init(&queue)
-
-	// Cost function from Point to goal
-	nodeGuess := func(p Point) int {
-		return (sizeX - p.X) + (sizeY - p.Y)
-	}
-
-	dirs := [][2]int {
-		{  0, -1 },
-		{ -1,  0 },
-		{  1,  0 },
-		{  0,  1 },
-	}
-
-	// Seed the start node
-	tree[Point{0, 0}] = 0
-	heap.Push(&queue, &QueueNode{
-		Point: Point{0, 0},
-		Guess: nodeGuess(Point{0, 0}),
-	})
-	goal := Point{ sizeX - 1, sizeY - 1 }
-
-	// Go!
-	for i := heap.Pop(&queue); i != nil ; i = heap.Pop(&queue) {
-		node := i.(*QueueNode)
-		current := node.Point
-
-		if current == goal {
-			break
+	part1Cavern := func(p Point) int {
+		if p.X < 0 || p.X >= len(cavern[0]) || p.Y < 0 || p.Y >= len(cavern) {
+			return -1
 		}
 
-		for _, d := range dirs {
-			newX, newY := current.X + d[0], current.Y + d[1]
-			if newX < 0 || newX >= sizeX || newY < 0 || newY >= sizeY {
-				continue
-			}
-
-			next := Point{ newX, newY }
-			costNext := tree[current] + cavern[next.Y][next.X]
-			if v, ok := tree[next]; !ok || costNext < v {
-				// This is the best route to "next" we've
-				// found so far
-				tree[next] = costNext
-
-				// Explore around 'next' with this new-found
-				// route
-				heap.Push(&queue, &QueueNode{
-					Point: next,
-					Guess: costNext + nodeGuess(next),
-				});
-			}
-		}
+		return cavern[p.Y][p.X]
 	}
-
-	fmt.Println(tree[goal])
+	part1Goal := Point{ len(cavern[0]) - 1, len(cavern) - 1 }
+	part1 := doAStar(start, part1Goal, part1Cavern)
+	fmt.Println("Part 1:", part1)
 
 	return nil
 }
