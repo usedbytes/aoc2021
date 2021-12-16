@@ -13,7 +13,7 @@ type Packet struct {
 	Version int
 	Type	int
 
-	Literal int
+	Value int
 
 	Children []*Packet
 }
@@ -81,6 +81,82 @@ func decodeOperatorChildren(s string) ([]*Packet, int) {
 	return children, idx
 }
 
+func sum(ps []*Packet) int {
+	if len(ps) == 0 {
+		return 0
+	}
+	v := ps[0].Value
+	for _, p := range ps[1:] {
+		v += p.Value
+	}
+
+	return v
+}
+
+func product(ps []*Packet) int {
+	if len(ps) == 0 {
+		return 0
+	}
+	v := ps[0].Value
+	for _, p := range ps[1:] {
+		v *= p.Value
+	}
+
+	return v
+}
+
+func min(ps []*Packet) int {
+	if len(ps) == 0 {
+		return 0
+	}
+	v := ps[0].Value
+	for _, p := range ps[1:] {
+		if p.Value < v {
+			v = p.Value
+		}
+	}
+
+	return v
+}
+
+func max(ps []*Packet) int {
+	if len(ps) == 0 {
+		return 0
+	}
+	v := ps[0].Value
+	for _, p := range ps[1:] {
+		if p.Value > v {
+			v = p.Value
+		}
+	}
+
+	return v
+}
+
+func gt(ps []*Packet) int {
+	if ps[0].Value > ps[1].Value {
+		return 1
+	}
+
+	return 0
+}
+
+func lt(ps []*Packet) int {
+	if ps[0].Value < ps[1].Value {
+		return 1
+	}
+
+	return 0
+}
+
+func eq(ps []*Packet) int {
+	if ps[0].Value == ps[1].Value {
+		return 1
+	}
+
+	return 0
+}
+
 func decodePacket(s string) (*Packet, int) {
 	idx := 0
 	ver, err := strconv.ParseUint(s[idx:idx+3], 2, 3)
@@ -105,12 +181,34 @@ func decodePacket(s string) (*Packet, int) {
 		// Literal
 		v, c := decodeLiteral(s[idx:])
 		idx += c
-		p.Literal = v
+		p.Value = v
 	default:
 		// Operator
 		ps, c := decodeOperatorChildren(s[idx:])
 		p.Children = ps
 		idx += c
+
+		var f func([]*Packet) int
+		switch t {
+		case 0:
+			f = sum
+		case 1:
+			f = product
+		case 2:
+			f = min
+		case 3:
+			f = max
+		case 5:
+			f = gt
+		case 6:
+			f = lt
+		case 7:
+			f = eq
+		default:
+			panic(fmt.Sprintf("unknown operator %d", t))
+		}
+
+		p.Value = f(ps)
 	}
 
 	return p, idx
@@ -167,6 +265,8 @@ func run() error {
 	p, _ := decodePacket(s)
 
 	fmt.Println("Part 1:", sumVersions(p))
+
+	fmt.Println("Part 2:", p.Value)
 
 	return nil
 }
