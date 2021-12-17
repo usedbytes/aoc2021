@@ -58,6 +58,50 @@ func run() error {
 
 	fmt.Println("Part 1:", y)
 
+	hits := make(map[[2]int]bool)
+
+	// For Part 2, we know the velocity has to be between
+	// y1 and +initialVelocity, so just scan
+	// that whole range.
+	//
+	// For each, determine which steps have 'y' in the target
+	// range.
+	for uy := y1; uy <= initialVelocity; uy += 1 {
+		y = 0
+		for vy, ty := uy, 0; ; vy, ty = vy - 1, ty + 1 {
+			y = y + vy
+
+			if y > y2 {
+				// Not there yet
+				continue
+			}
+
+			if y < y1 {
+				// Overshot
+				break
+			}
+
+			// I can't figure out how to solve for 'x', so just brute
+			// force it :-)
+			for ux := 0; ux <= x2; ux++ {
+				x := 0
+				vx := ux
+				for tx := 0; tx <= ty; tx++ {
+					x += vx
+					if vx > 0 {
+						vx--
+					}
+				}
+
+				if x >= x1 && x <= x2 {
+					hits[[2]int{ux, uy}] = true
+				}
+			}
+		}
+	}
+
+	fmt.Println("Part 2:", len(hits))
+
 	return nil
 }
 
