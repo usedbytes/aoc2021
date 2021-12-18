@@ -251,9 +251,12 @@ func Magnitude(s SFN) int {
 
 func run() error {
 
+	var sfns []SFN
 	var res SFN
 	doLine := func(line string) error {
-		res = Add(res, ParseSFN(line))
+		sfn := ParseSFN(line)
+		sfns = append(sfns, sfn)
+		res = Add(res, sfn)
 
 		return nil
 	}
@@ -262,6 +265,27 @@ func run() error {
 	}
 
 	fmt.Println("Part 1:", Magnitude(res))
+
+	largestMag := 0
+	for i := 0; i < len(sfns); i++ {
+		for j := 0; j < len(sfns); j++ {
+			if i == j {
+				continue
+			}
+
+			a := Magnitude(Add(sfns[i], sfns[j]))
+			if a > largestMag {
+				largestMag = a
+			}
+
+			b := Magnitude(Add(sfns[j], sfns[i]))
+			if b > largestMag {
+				largestMag = b
+			}
+		}
+	}
+
+	fmt.Println("Part 2:", largestMag)
 
 	return nil
 }
