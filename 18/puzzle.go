@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"os"
 	"strconv"
@@ -31,51 +30,34 @@ func doLines(filename string, do func(line string) error) error {
 	return nil
 }
 
-type SFN []string
+type Token int
+const (
+	TokenOpen Token = -1
+	TokenClose      = -2
+)
 
-func sfnScanner(s string) *bufio.Scanner {
-	scanner := bufio.NewScanner(strings.NewReader(s))
-	scanner.Split(func (data []byte, atEOF bool) (int, []byte, error) {
-		skip := 0
-		for {
-			if len(data) == 0 {
-				return 0, nil, nil
-			}
-
-			if data[0] == ',' {
-				skip++
-				data = data[1:]
-				continue
-			}
-
-			if data[0] == '[' {
-				return skip+1, data[:1], nil
-			}
-
-			if data[0] == ']' {
-				return skip+1, data[:1], nil
-			}
-
-			end := bytes.IndexAny(data, "[],")
-			if end == -1 {
-				return 0, nil, nil
-			} else {
-				return skip+end, data[:end], nil
-			}
-
-			return 0, nil, fmt.Errorf("unexpected condition: %s", data)
-		}
-	});
-
-	return scanner
-}
+type SFN []Token
 
 func ParseSFN(s string) SFN {
 	var sfn SFN
-	scanner := sfnScanner(s)
-	for scanner.Scan() {
-		tok := scanner.Text()
-		sfn = append(sfn, tok)
+
+	for i := 0; i < len(s); i++ {
+		l := s[i]
+		if l == '[' {
+			sfn = append(sfn, TokenOpen)
+		} else if l == ']' {
+			sfn = append(sfn, TokenClose)
+		} else if l >= '0' && l <= '9' {
+			count := strings.IndexAny(s[i:], "[],")
+
+			v, err := strconv.Atoi(s[i:i+count])
+			if err != nil {
+				panic(err)
+			}
+
+			sfn = append(sfn, Token(v))
+			i += count - 1
+		}
 	}
 
 	sfn.Reduce()
@@ -83,74 +65,68 @@ func ParseSFN(s string) SFN {
 }
 
 func (s SFN) String() string {
-	return strings.Join([]string(s), " ")
+	res := ""
+	for _, t := range s {
+		switch t {
+		case TokenOpen:
+			res += "[ "
+		case TokenClose:
+			res += "] "
+		default:
+			res += fmt.Sprintf("%d ", int(t))
+		}
+	}
+	return res
+}
+
+func assert(cond bool, msg string) {
+	if !cond {
+		panic(msg)
+	}
 }
 
 func explode(old SFN, idx int) SFN {
-	left, err := strconv.Atoi(old[idx+1])
-	if err != nil {
-		panic(err)
-	}
-
-	right, err := strconv.Atoi(old[idx+2])
-	if err != nil {
-		panic(err)
-	}
-
-	var j int
-	for j = idx; j >= 0; j-- {
-		t := old[j]
-		if t == "[" || t == "]" {
+	// Scan left for numbers
+	left := old[idx+1]
+	assert(left >= 0, "left not a number")
+	for j := idx; j >= 0; j-- {
+		if old[j] < 0 {
 			continue
 		}
-
-		v, err := strconv.Atoi(t)
-		if err != nil {
-			panic(err)
-		}
-
-		v += left
-
-		old[j] = fmt.Sprintf("%d", v)
+		old[j] += left
 		break
 	}
 
+	// Scan right for numbers
+	right := old[idx+2]
+	assert(right >= 0, "right not a number")
 	for j := idx+3; j < len(old); j++ {
-		t := old[j]
-		if t == "[" || t == "]" {
+		if old[j] < 0 {
 			continue
 		}
-
-		v, err := strconv.Atoi(t)
-		if err != nil {
-			panic(err)
-		}
-
-		v += right
-
-		old[j] = fmt.Sprintf("%d", v)
+		old[j] += right
 		break
 	}
 
 	// We're swapping 4 tokens for 1, so net decrease of 3
-	reduced := SFN(make([]string, len(old)-3))
+	reduced := SFN(make([]Token, len(old)-3))
 
 	copy(reduced, old[:idx])
-	reduced[idx] = "0"
+	reduced[idx] = 0
 	copy(reduced[idx+1:], old[idx+4:])
 
 	return reduced
 }
 
-func split(old SFN, idx, val int) SFN {
+func split(old SFN, idx int) SFN {
 	// We're swapping 1 token for 4, so net increase of 3
-	reduced := SFN(make([]string, len(old)+3))
+	reduced := SFN(make([]Token, len(old)+3))
 
 	copy(reduced, old[:idx])
-	reduced[idx] = "["
-	reduced[idx+1] = fmt.Sprintf("%d", val / 2)
-	reduced[idx+2] = fmt.Sprintf("%d", (val + 1) / 2)
-	reduced[idx+3] = "]"
+	reduced[idx] = TokenOpen
+	reduced[idx+1] = old[idx] / 2
+	reduced[idx+2] = (old[idx] + 1) / 2
+	reduced[idx+3] = TokenClose
 	copy(reduced[idx+4:], old[idx+1:])
 
 	return reduced
@@ -164,14 +140,14 @@ func (s *SFN) Reduce() {
 
 		// First check for explosions
 		for i, tok := range old {
-			if tok == "[" {
+			if tok == TokenOpen {
 				depth += 1
 
 				if depth > 4 {
 					reduced = explode(old, i)
 					break
 				}
-			} else if tok == "]" {
+			} else if tok == TokenClose {
 				depth -= 1
 			}
 		}
@@ -182,18 +158,9 @@ func (s *SFN) Reduce() {
 
 		// If there were none, look for splits
 		for i, tok := range old {
-			if tok == "[" || tok == "]" {
-				continue
-			} else {
-				v, err := strconv.Atoi(tok)
-				if err != nil {
-					panic(err)
-				}
-
-				if v >= 10 {
-					reduced = split(old, i, v)
-					break
-				}
+			if tok >= 10 {
+				reduced = split(old, i)
+				break
 			}
 		}
 		if reduced != nil {
@@ -216,23 +183,19 @@ func Add(a, b SFN) SFN {
 		return a
 	}
 
-	res := SFN(make([]string, len(a)+len(b)+2))
-	res[0] = "["
+	res := SFN(make([]Token, len(a)+len(b)+2))
+	res[0] = TokenOpen
 	copy(res[1:], a)
 	copy(res[len(a)+1:], b)
-	res[len(res)-1]= "]"
+	res[len(res)-1]= TokenClose
 
 	res.Reduce()
 	return res
 }
 
 func (s SFN) magnitude(idx int) (int, int) {
-	if s[idx] != "[" && s[idx] != "]" {
-		v, err := strconv.Atoi(s[idx])
-		if err != nil {
-			panic(err)
-		}
-		return v, 1
+	if s[idx] >= 0 {
+		return int(s[idx]), 1
 	}
 
 	left, lused := s.magnitude(idx+1)
@@ -250,14 +213,12 @@ func Magnitude(s SFN) int {
 }
 
 func run() error {
-
 	var sfns []SFN
 	var res SFN
 	doLine := func(line string) error {
 		sfn := ParseSFN(line)
 		sfns = append(sfns, sfn)
 		res = Add(res, sfn)
-
 		return nil
 	}
 	if err := doLines(os.Args[1], doLine); err != nil {
