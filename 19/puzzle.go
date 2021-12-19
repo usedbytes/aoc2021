@@ -157,6 +157,14 @@ func match(s, t *Scanner, r int) (int, func(Point) Point) {
 	return maxMatch, nil
 }
 
+func abs(a int) int {
+	if a < 0 {
+		return -a
+	}
+
+	return a
+}
+
 func run() error {
 	var scanners []*Scanner
 	var scanner *Scanner
@@ -250,6 +258,22 @@ func run() error {
 	}
 
 	fmt.Println("Part 1:", len(beacons))
+
+	maxDist := 0
+	for i, s := range scanners {
+		for j, t := range scanners {
+			if j <= i {
+				continue
+			}
+			diff := t.Coordinates.Sub(s.Coordinates)
+			dist := abs(diff.X) + abs(diff.Y) + abs(diff.Z)
+			if dist > maxDist {
+				maxDist = dist
+			}
+		}
+	}
+
+	fmt.Println("Part 2:", maxDist)
 
 	return nil
 }
