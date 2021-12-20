@@ -111,7 +111,10 @@ func run() error {
 		Oob: false, // Initially, out-of-bounds areas of the input are '.' (unlit)
 	}
 
-	for i := 0; i < 2; i++ {
+	part1 := 0
+	part2 := 0
+
+	for i := 0; i < 50; i++ {
 		newPixels := make(map[Point]bool)
 		for y := img.Min.Y - 1; y <= img.Max.Y + 1; y++ {
 			for x := img.Min.X - 1; x <= img.Max.X + 1; x++ {
@@ -141,7 +144,13 @@ func run() error {
 			Oob: oobb,
 		}
 		img = newImg
+
+		if i == 1 {
+			part1 = len(img.Pixels)
+		}
 	}
+
+	part2 = len(img.Pixels)
 
 	if len(os.Args) > 2 {
 		for y := img.Min.Y - 1; y <= img.Max.Y + 1; y++ {
@@ -157,7 +166,8 @@ func run() error {
 		}
 	}
 
-	fmt.Println("Part 1:", len(img.Pixels))
+	fmt.Println("Part 1:", part1)
+	fmt.Println("Part 2:", part2)
 
 
 	return nil
