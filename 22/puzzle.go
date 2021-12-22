@@ -122,11 +122,6 @@ func (c Cuboid) Disjoint(b Cuboid) []Cuboid {
 
 	res := []Cuboid{}
 
-	fmt.Println(c, " ^ ", b)
-	fmt.Println("xs", disx)
-	fmt.Println("ys", disy)
-	fmt.Println("zs", disz)
-
 	for _, x := range append(disx, intx) {
 		for _, y := range append(disy, inty) {
 			for _, z := range append(disz, intz) {
@@ -154,13 +149,16 @@ func (c Cuboid) Count() int {
 func run() error {
 	//initMin, initMax := -50, 50
 
-	/*
 	on := []Cuboid{}
-	off := []Cuboid{}
+
+	rangeCube := Cuboid{
+		X: MakeRange(-50, 50),
+		Y: MakeRange(-50, 50),
+		Z: MakeRange(-50, 50),
+	}
 
 	if err := doLines(os.Args[1], func(line string) error {
 		fmt.Println(line)
-
 		var s string
 		var x1, x2, y1, y2, z1, z2 int
 		_ ,err := fmt.Sscanf(line, "%s x=%d..%d,y=%d..%d,z=%d..%d", &s, &x1, &x2, &y1, &y2, &z1, &z2)
@@ -168,7 +166,7 @@ func run() error {
 			return err
 		}
 
-		fmt.Println(s, x1, x2, y1, y2, z1, z2)
+		//fmt.Println(s, x1, x2, y1, y2, z1, z2)
 
 		c := Cuboid{
 			X: MakeRange(x1, x2),
@@ -176,10 +174,74 @@ func run() error {
 			Z: MakeRange(z1, z2),
 		}
 
-		if s == "on" {
-			on = append(on, c)
+		if c.Intersect(rangeCube).Count() == 0 {
+			fmt.Println(line, "out of range")
+		}
+
+		intersects := false
+		for _, o := range on {
+			cio := c.Intersect(o)
+			//fmt.Println(c, " N ", o, cio, cio.Count())
+			if cio.Count() > 0 {
+				intersects = true
+				break
+			}
+		}
+
+		if !intersects {
+			if s == "on" {
+				fmt.Println(c, "adds", c.Count())
+				on = append(on, c)
+			}
+			// Nothing to do if "off" doesn't intersect anything
 		} else {
-			off = append(off, c)
+			// On only contains unique bits, so
+			// Find the intersection between 'c' and each 'on'
+			newOn := []Cuboid{}
+			for _, ic := range on {
+				cic := c.Intersect(ic)
+				if cic.Count() == 0 {
+					// Doesn't change anything in this chunk
+					fmt.Println("keeping", ic)
+					newOn = append(newOn, ic)
+					continue
+				}
+
+				//fmt.Println("Blah")
+
+				if s == "on" {
+					fmt.Println(ic.Count(), "intersects", c.Count())
+					// We keep 'ic'
+					newOn = append(newOn, ic)
+					// The disjoint parts of 'c' turn on
+					cdc := c.Disjoint(ic)
+					newOn = append(newOn, cdc...)
+					//fmt.Println("fragments")
+					for _, dc := range cdc {
+						fmt.Println(dc.Count())
+					}
+				} else {
+					// The disjoint parts if 'ic' *stay* on
+					cdc := ic.Disjoint(c)
+					newOn = append(newOn, cdc...)
+					/*
+					for _, dc := range cdc {
+						fmt.Println(dc, "stays on", dc.Count())
+					}
+					*/
+
+					//goesOff := c.Intersect(ic)
+					//fmt.Println(goesOff, "turns off", goesOff.Count())
+				}
+			}
+
+			on = newOn
+		}
+
+		fmt.Println("len(on)", len(on))
+
+		if len(on) > 5000 {
+			return fmt.Errorf("getting out of hand")
 		}
 
 		return nil
@@ -187,33 +249,96 @@ func run() error {
 		return err
 	}
 
-	for i, o := range on {
-		for j, m := range on {
-			if j <= i {
-				continue
+	count := 0
+	for _, c := range on {
+		fmt.Println(c, "turns on", c.Count())
+		count += c.Count()
+	}
+
+	fmt.Println("count", count)
+
+	/*
+
+	// Explode the "on" list
+	modified := true
+	for modified {
+		modified = false
+		for i, ic := range on {
+			for _, jc := range on[i+1:] {
+				// Do these cubes intersect? If not, there's
+				// nothing to do
+				iji := ic.Intersect(jc)
+				if iji.Count() == 0 {
+					continue
+				}
+
+				// Discard the overlapping part of 'ic', and
+				// keep the non-overlapping part(s)
+				ijd := ic.Disjoint(jc)
+				if len(ijd) > 0 {
+					on[i] = ijd[0]
+					on = append(on, ijd[1:]...)
+				} else {
+					copy(on[i:], on[i+1:])
+					on = on[:len(on)-1]
+				}
+				modified = true
+				break
 			}
 
-			ndjs = append(ndjs, o.Disjoint(m))
+			if modified {
+				break
+			}
 		}
 	}
+
+	// Explode the "off" list
+	modified = true
+	for modified {
+		modified = false
+		for i, ic := range off {
+			for _, jc := range off[i+1:] {
+				iji := ic.Intersect(jc)
+				if iji.Count() == 0 {
+					continue
+				}
+
+				ijd := ic.Disjoint(jc)
+				if len(ijd) > 0 {
+					off[i] = ijd[0]
+					off = append(off, ijd[1:]...)
+				} else {
+					copy(off[i:], off[i+1:])
+					off = off[:len(off)-1]
+				}
+				modified = true
+				break
+			}
+
+			if modified {
+				break
+			}
+		}
+	}
+
+	count := 0
+	for _, c := range on {
+		fmt.Println(c, "turns on", c.Count())
+		count += c.Count()
+	}
+
+	fmt.Println("count", count)
+
+	for _, c := range off {
+		for _, d := range on {
+			i := c.Intersect(d)
+			fmt.Println(c, d, "turns off", i.Count())
+			count -= i.Count()
+		}
+	}
+
+	fmt.Println("On:", count)
 	*/
-
-	c := Cuboid{
-		X: MakeRange(0, 2),
-		Y: MakeRange(0, 2),
-		Z: MakeRange(0, 2),
-	}
-
-	d := Cuboid{
-		X: MakeRange(1, 1),
-		Y: MakeRange(1, 1),
-		Z: MakeRange(1, 1),
-	}
-
-	fmt.Println(c.Z.Disjoint(d.Z))
-	fmt.Println(d.Z.Disjoint(c.Z))
-	fmt.Println(c.Intersect(d))
-	fmt.Println(c.Disjoint(d), len(c.Disjoint(d)))
 
 	return nil
 }
