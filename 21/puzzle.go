@@ -28,52 +28,7 @@ func doLines(filename string, do func(line string) error) error {
 	return nil
 }
 
-func run() error {
-	var initialPositions [2]int
-	if err := doLines(os.Args[1], func(line string) error {
-		var p, pos int
-		_, err := fmt.Sscanf(line, "Player %d starting position: %d", &p, &pos)
-		if err != nil {
-			return err
-		}
-
-		initialPositions[p-1] = pos
-
-		return nil
-	}); err != nil {
-		return err
-	}
-
-	nrolls := 0
-	roll := func() int {
-		nrolls++
-		ret := ((nrolls - 1) % 100) + 1;
-		return ret
-	}
-
-	var scores [2]int
-	positions := [2]int{
-		initialPositions[0],
-		initialPositions[1],
-	}
-	winner := 0
-	for scores[0] < 1000 && scores[1] < 1000 {
-		for p := 0; p < len(positions); p++ {
-			for i := 0; i < 3; i++ {
-				move := roll()
-				positions[p] = (((positions[p] - 1) + move) % 10) + 1
-			}
-			scores[p] += positions[p]
-
-			if scores[p] >= 1000 {
-				winner = p
-				break
-			}
-		}
-	}
-
-	fmt.Println("Part 1:", scores[(winner + 1) % 2] * nrolls)
-
+func Part2Approach1(initialPositions [2]int) int64 {
 	// Calculate all the possible scores for the Dirac dice
 	// and the number of ways to reach that score
 	dieScores := make([]int, 10)
@@ -97,7 +52,7 @@ func run() error {
 	// Initial state - one way to reach it
 	states[0][0][initialPositions[0]][initialPositions[1]] = 1
 
-	scores = [2]int{0, 0}
+	scores := [2]int{}
 	pos := [2]int{}
 
 	for scores[0] = 0; scores[0] < 21; scores[0]++ {
@@ -160,10 +115,60 @@ func run() error {
 	}
 
 	if p1Wins > p2Wins {
-		fmt.Println("Part 2:", p1Wins)
+		return p1Wins
 	} else {
-		fmt.Println("Part 2:", p2Wins)
+		return p2Wins
 	}
+}
+
+func run() error {
+	var initialPositions [2]int
+	if err := doLines(os.Args[1], func(line string) error {
+		var p, pos int
+		_, err := fmt.Sscanf(line, "Player %d starting position: %d", &p, &pos)
+		if err != nil {
+			return err
+		}
+
+		initialPositions[p-1] = pos
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	nrolls := 0
+	roll := func() int {
+		nrolls++
+		ret := ((nrolls - 1) % 100) + 1;
+		return ret
+	}
+
+	var scores [2]int
+	positions := [2]int{
+		initialPositions[0],
+		initialPositions[1],
+	}
+	winner := 0
+	for scores[0] < 1000 && scores[1] < 1000 {
+		for p := 0; p < len(positions); p++ {
+			for i := 0; i < 3; i++ {
+				move := roll()
+				positions[p] = (((positions[p] - 1) + move) % 10) + 1
+			}
+			scores[p] += positions[p]
+
+			if scores[p] >= 1000 {
+				winner = p
+				break
+			}
+		}
+	}
+
+	fmt.Println("Part 1:", scores[(winner + 1) % 2] * nrolls)
+
+	part2 := Part2Approach1(initialPositions)
+	fmt.Println("Part 2:", part2)
 
 	return nil
 }
