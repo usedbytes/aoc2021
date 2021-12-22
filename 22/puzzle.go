@@ -195,7 +195,6 @@ func run() error {
 	var p1Cmds, p2Cmds []Cuboid
 
 	if err := doLines(os.Args[1], func(line string) error {
-		fmt.Println(line)
 		var s string
 		var x1, x2, y1, y2, z1, z2 int
 		_ ,err := fmt.Sscanf(line, "%s x=%d..%d,y=%d..%d,z=%d..%d", &s, &x1, &x2, &y1, &y2, &z1, &z2)
@@ -233,15 +232,14 @@ func run() error {
 	// Throw more cores at the problem... This clearly isn't the "right"
 	// solution, it takes ~15 minutes on my M1 Mac
 	var wg sync.WaitGroup
-	counts := make(chan int64)
+	counts := make(chan [2]int64)
 
 	part2 := int64(0)
 	for i, cmd := range p2Cmds {
 		wg.Add(1)
 		go func(c Cuboid, i int) {
 			this := propagate(c, p2Cmds[i+1:])
-			fmt.Printf("Cmd %d/%d adds %d\n", i, len(p2Cmds), this)
-			counts <- this
+			counts <- [2]int64{int64(i), this}
 			wg.Done()
 		}(cmd, i)
 	}
@@ -251,9 +249,26 @@ func run() error {
 		close(counts)
 	}()
 
-	for c := range counts {
-		part2 += c
+	taskStr := make([]byte, len(p2Cmds))
+	for i := range taskStr {
+		taskStr[i] = ' '
 	}
+
+	nret := 0
+	fmt.Println("\033[2J")
+	for result := range counts {
+		nret++
+		i := result[0]
+		c := result[1]
+
+		taskStr[i] = '.'
+
+		part2 += c
+		fmt.Printf("\033[0;0H")
+		fmt.Printf("Part 2 running: [%s]\n", string(taskStr))
+		fmt.Printf("%d/%d %d", nret, len(p2Cmds), part2)
+	}
+	fmt.Println("")
 
 	fmt.Println("Part 1:", part1)
 	fmt.Println("Part 2:", part2)
