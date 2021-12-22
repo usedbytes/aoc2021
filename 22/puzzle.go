@@ -103,21 +103,34 @@ func (r Range) String() string {
 type Cuboid struct {
 	X, Y, Z Range
 	On bool
+	Count int
 }
 
-func (c Cuboid) Intersect(b Cuboid) Cuboid {
-	return Cuboid{
-		X: c.X.Intersect(b.X),
-		Y: c.Y.Intersect(b.Y),
-		Z: c.Z.Intersect(b.Z),
+func MakeCuboid(x, y, z Range, on bool) *Cuboid {
+	c := Cuboid{
+		X: x,
+		Y: y,
+		Z: z,
+		On: on,
 	}
+	c.Count = c.count()
+
+	return &c
+}
+
+func (c Cuboid) Intersect(b *Cuboid) *Cuboid {
+	return MakeCuboid(
+		c.X.Intersect(b.X),
+		c.Y.Intersect(b.Y),
+		c.Z.Intersect(b.Z),
+		c.On)
 }
 
 func (c Cuboid) String() string {
-	return fmt.Sprintf("{%v %v %v %v %d}", c.X, c.Y, c.Z, c.On, c.Count())
+	return fmt.Sprintf("{%v %v %v %v %d}", c.X, c.Y, c.Z, c.On, c.Count)
 }
 
-func (c Cuboid) Disjoint(b Cuboid) []Cuboid {
+func (c Cuboid) Disjoint(b *Cuboid) []*Cuboid {
 	disx := c.X.Disjoint(b.X)
 	disy := c.Y.Disjoint(b.Y)
 	disz := c.Z.Disjoint(b.Z)
@@ -126,17 +139,17 @@ func (c Cuboid) Disjoint(b Cuboid) []Cuboid {
 	inty := c.Y.Intersect(b.Y)
 	intz := c.Z.Intersect(b.Z)
 
-	res := []Cuboid{}
+	res := []*Cuboid{}
 
 	for _, x := range append(disx, intx) {
 		for _, y := range append(disy, inty) {
 			for _, z := range append(disz, intz) {
-				nc := Cuboid{ x, y, z, c.On }
+				nc := MakeCuboid(x, y, z, c.On)
 				ic := c.Intersect(nc)
 				ib := b.Intersect(nc)
 
-				icc := ic.Count()
-				ibc := ib.Count()
+				icc := ic.Count
+				ibc := ib.Count
 
 				if (icc > 0) && !(icc > 0 && ibc > 0) {
 					res = append(res, nc)
@@ -148,7 +161,7 @@ func (c Cuboid) Disjoint(b Cuboid) []Cuboid {
 	return res
 }
 
-func (c Cuboid) Count() int {
+func (c Cuboid) count() int {
 	if c.X.Length < 0 || c.Y.Length < 0 || c.Z.Length < 0 {
 		return 0
 	}
@@ -157,7 +170,7 @@ func (c Cuboid) Count() int {
 
 // Return the number of eventual 'on' cells contributed by *only* 'c'
 // i.e. that aren't masked or turned off by a another entry in 'through'
-func propagate(c Cuboid, through []Cuboid) int64 {
+func propagate(c *Cuboid, through []*Cuboid) int64 {
 	if !c.On {
 		// Can't ever turn anything on
 		return 0
@@ -165,7 +178,7 @@ func propagate(c Cuboid, through []Cuboid) int64 {
 
 	// If we made it to the end, then return what's left
 	if len(through) == 0 {
-		return int64(c.Count())
+		return int64(c.Count)
 	}
 
 	// Anything that intersects with 'next' will be handled by a later
@@ -185,14 +198,14 @@ func propagate(c Cuboid, through []Cuboid) int64 {
 }
 
 func run() error {
-	part1Range := Cuboid{
-		X: MakeRange( -50, 50 ),
-		Y: MakeRange( -50, 50 ),
-		Z: MakeRange( -50, 50 ),
-	}
+	part1Range := MakeCuboid(
+		MakeRange( -50, 50 ),
+		MakeRange( -50, 50 ),
+		MakeRange( -50, 50 ),
+		false)
 
 	// p1Cmds is filtered by the range
-	var p1Cmds, p2Cmds []Cuboid
+	var p1Cmds, p2Cmds []*Cuboid
 
 	if err := doLines(os.Args[1], func(line string) error {
 		var s string
@@ -202,17 +215,17 @@ func run() error {
 			return err
 		}
 
-		c := Cuboid{
-			X: MakeRange(x1, x2),
-			Y: MakeRange(y1, y2),
-			Z: MakeRange(z1, z2),
-		}
+		c := MakeCuboid(
+			MakeRange(x1, x2),
+			MakeRange(y1, y2),
+			MakeRange(z1, z2),
+			false)
 
 		if s == "on" {
 			c.On = true
 		}
 
-		if c.Intersect(part1Range).Count() > 0 {
+		if c.Intersect(part1Range).Count > 0 {
 			p1Cmds = append(p1Cmds, c)
 		}
 
@@ -237,7 +250,7 @@ func run() error {
 	part2 := int64(0)
 	for i, cmd := range p2Cmds {
 		wg.Add(1)
-		go func(c Cuboid, i int) {
+		go func(c *Cuboid, i int) {
 			this := propagate(c, p2Cmds[i+1:])
 			counts <- [2]int64{int64(i), this}
 			wg.Done()
