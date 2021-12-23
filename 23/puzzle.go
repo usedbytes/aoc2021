@@ -82,22 +82,34 @@ func AllowedDestinations(c Cave, p Position) []Position {
 		currentRoom := PositionToRoomIdx(currentPos)
 		targetRoom := TargetRoomIdx(color)
 
-		// At the back of the room?
-		if currentPos.Y == 2 {
-			if currentRoom == targetRoom {
+		if currentRoom == targetRoom {
+			// At the back of the room?
+			if currentPos.Y == len(c) - 1 {
 				// Don't want to move
-				return poss
+				return nil
 			}
 
-			if c[1][currentPos.X] != '.' {
-				// Can't move
+			// Check if everyone else in the room is already the target color
+			homogenous := true
+			for y := len(c) - 1; y > currentPos.Y; y-- {
+				if c.At(Position{currentPos.X, y}) != color {
+					homogenous = false
+					break
+				}
+			}
+
+			if homogenous {
+				// Don't want to move
 				return poss
 			}
 		}
 
-		if currentRoom == targetRoom && c.At(Position{currentPos.X, 2}) == color {
-			// Don't want to move
-			return poss
+		// Can we get out of the room?
+		for y := currentPos.Y - 1; y > 0; y-- {
+			if c.At(Position{currentPos.X, y}) != '.' {
+				// Can't move
+				return poss
+			}
 		}
 
 		// All the hallway positions
@@ -136,18 +148,19 @@ func AllowedDestinations(c Cave, p Position) []Position {
 	roomX := RoomXPosition(room)
 
 	frontOfRoom := c.At(Position{roomX, 1})
-	backOfRoom := c.At(Position{roomX, 2})
 	roomFull := (frontOfRoom != '.')
-	roomEmpty := (backOfRoom == '.')
 
 	if roomFull {
 		// Can't get in
 		return poss
 	}
 
-	if !roomEmpty && backOfRoom != color {
-		// Will refuse to get in
-		return poss
+	for y := 1; y < len(c); y++ {
+		at := c.At(Position{roomX, y})
+		if at != '.' && at != color {
+			// Will refuse to get in
+			return poss
+		}
 	}
 
 	// Check if the hallway is clear all the way to the room
@@ -160,18 +173,16 @@ func AllowedDestinations(c Cave, p Position) []Position {
 		}
 	}
 
-	if roomEmpty {
-		// Take the bottom slot
-		poss = append(poss, Position{
-			X: roomX,
-			Y: 2,
-		})
-	} else {
-		// Take the top slot
-		poss = append(poss, Position{
-			X: roomX,
-			Y: 1,
-		})
+	// We can make it to the room! Take the lowest position available
+	for y := len(c) - 1; y > 0; y-- {
+		at := c.At(Position{roomX, y})
+		if at == '.' {
+			poss = append(poss, Position{
+				X: roomX,
+				Y: y,
+			})
+			break
+		}
 	}
 
 	return poss
