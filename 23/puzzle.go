@@ -29,7 +29,7 @@ func doLines(filename string, do func(line string) error) error {
 	return nil
 }
 
-type Cave [3][11]byte
+type Cave [5][11]byte
 
 type Position struct {
 	X, Y int
@@ -62,15 +62,15 @@ func abs(a int) int {
 	return a
 }
 
-func (c Cave) At(p Position) byte {
-	return c[p.Y][p.X]
+func (c Cave) At(X, Y int) byte {
+	return c[Y][X]
 }
 
 func AllowedDestinations(c Cave, p Position) []Position {
 	var poss []Position
 
 	currentPos := p
-	color := c.At(p)
+	color := c.At(p.X, p.Y)
 
 	if !strings.Contains("ABCD", string(color)) {
 		return poss
@@ -83,16 +83,15 @@ func AllowedDestinations(c Cave, p Position) []Position {
 		targetRoom := TargetRoomIdx(color)
 
 		if currentRoom == targetRoom {
-			// At the back of the room?
-			if currentPos.Y == len(c) - 1 {
-				// Don't want to move
-				return nil
-			}
-
 			// Check if everyone else in the room is already the target color
 			homogenous := true
-			for y := len(c) - 1; y > currentPos.Y; y-- {
-				if c.At(Position{currentPos.X, y}) != color {
+			for y := currentPos.Y + 1; y < len(c); y++ {
+				at := c.At(currentPos.X, y)
+				if at == '#' {
+					break
+				}
+
+				if at != color {
 					homogenous = false
 					break
 				}
@@ -100,15 +99,15 @@ func AllowedDestinations(c Cave, p Position) []Position {
 
 			if homogenous {
 				// Don't want to move
-				return poss
+				return nil
 			}
 		}
 
 		// Can we get out of the room?
 		for y := currentPos.Y - 1; y > 0; y-- {
-			if c.At(Position{currentPos.X, y}) != '.' {
+			if c.At(currentPos.X, y) != '.' {
 				// Can't move
-				return poss
+				return nil
 			}
 		}
 
@@ -129,7 +128,7 @@ func AllowedDestinations(c Cave, p Position) []Position {
 					continue
 				}
 
-				if c.At(Position{newX, 0}) != '.' {
+				if c.At(newX, 0) != '.' {
 					// Can't pass another pod
 					break
 				}
@@ -147,7 +146,7 @@ func AllowedDestinations(c Cave, p Position) []Position {
 	room := TargetRoomIdx(color)
 	roomX := RoomXPosition(room)
 
-	frontOfRoom := c.At(Position{roomX, 1})
+	frontOfRoom := c.At(roomX, 1)
 	roomFull := (frontOfRoom != '.')
 
 	if roomFull {
@@ -156,7 +155,11 @@ func AllowedDestinations(c Cave, p Position) []Position {
 	}
 
 	for y := 1; y < len(c); y++ {
-		at := c.At(Position{roomX, y})
+		at := c.At(roomX, y)
+		if at == '#' {
+			break
+		}
+
 		if at != '.' && at != color {
 			// Will refuse to get in
 			return poss
@@ -168,14 +171,18 @@ func AllowedDestinations(c Cave, p Position) []Position {
 	dir /= abs(dir)
 	for i := currentPos.X + dir; i != roomX; i += dir {
 		// Can't get past another amphipod
-		if c.At(Position{i, 0}) != '.' {
+		if c.At(i, 0) != '.' {
 			return poss
 		}
 	}
 
 	// We can make it to the room! Take the lowest position available
 	for y := len(c) - 1; y > 0; y-- {
-		at := c.At(Position{roomX, y})
+		at := c.At(roomX, y)
+		if at == '#' {
+			continue
+		}
+
 		if at == '.' {
 			poss = append(poss, Position{
 				X: roomX,
@@ -216,7 +223,7 @@ func Distance(from, to Position) int {
 func (c Cave) Move(from, to Position) (Cave, int) {
 	distance := Distance(from, to)
 	pricePerMove := []int{1, 10, 100, 1000}
-	colorIdx := int(c.At(from) - 'A')
+	colorIdx := int(c.At(from.X, from.Y) - 'A')
 
 	r := c
 	r[from.Y][from.X], r[to.Y][to.X] = r[to.Y][to.X], r[from.Y][from.X]
@@ -225,14 +232,21 @@ func (c Cave) Move(from, to Position) (Cave, int) {
 }
 
 func (c Cave) IsSolved() bool {
-	return c.At(Position{2, 1}) == 'A' &&
-		c.At(Position{2, 2}) == 'A' &&
-		c.At(Position{4, 1}) == 'B' &&
-		c.At(Position{4, 2}) == 'B' &&
-		c.At(Position{6, 1}) == 'C' &&
-		c.At(Position{6, 2}) == 'C' &&
-		c.At(Position{8, 1}) == 'D' &&
-		c.At(Position{8, 2}) == 'D'
+	for room := 0; room < 4; room++ {
+		x := RoomXPosition(room)
+		for y := 1; y < len(c); y++ {
+			at := c.At(x, y)
+			if at == '#' {
+				break
+			}
+
+			if at != 'A' + byte(room) {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func solve(c Cave, dp map[Cave]int) int {
@@ -269,19 +283,28 @@ func solve(c Cave, dp map[Cave]int) int {
 func run() error {
 	var cave Cave
 
-	lineNo := 0
+	part2 := (len(os.Args) > 2)
+
+	y := -1
 	if err := doLines(os.Args[1], func(line string) error {
-		lineNo++
-		if lineNo < 2 || lineNo > 4 {
+		if y < 0 || y > len(cave) - 1 {
+			y++
 			return nil
 		}
 
-		y := lineNo - 2
 		for x, c := range line[1:] {
 			if x > len(cave[0]) - 1 {
 				break
 			}
 			cave[y][x] = byte(c)
+		}
+
+		y++
+
+		if part2 && y == 2 {
+			copy(cave[2][:], []byte(" #D#C#B#A#"))
+			copy(cave[3][:], []byte(" #D#B#A#C#"))
+			y += 2
 		}
 
 		return nil
