@@ -118,7 +118,7 @@ func AllowedDestinations(c Cave, p Position) []Position {
 			for i := 0; i < 11; i++ {
 				newX := p.X + (i * d)
 
-				if newX < 0 || newX >= 10 {
+				if newX < 0 || newX > 10 {
 					// Reached end of hallway
 					continue
 				}
