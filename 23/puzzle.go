@@ -224,29 +224,35 @@ func (c Cave) IsSolved() bool {
 		c.At(Position{8, 2}) == 'D'
 }
 
-func solve(c Cave, cost int, path [][2]Position) (int, [][2]Position) {
+func solve(c Cave, dp map[Cave]int) int {
 	if c.IsSolved() {
-		return cost, path
+		return 0
 	}
 
-	var minPath [][2]Position
+	if v, ok := dp[c]; ok {
+		return v
+	}
 
 	minCost := -1
 	pods := FindPods(c)
 	for _, p := range pods {
 		moves := AllowedDestinations(c, p)
 		for _, m := range moves {
-			d, price := c.Move(p, m)
-			newCost, newPath := solve(d, cost + price, append(path, [2]Position{p, m}))
-			if minCost < 0 || (newCost > 0 && newCost < minCost) {
-				minPath = make([][2]Position, len(newPath))
-				copy(minPath, newPath)
-				minCost = newCost
+			d, moveCost := c.Move(p, m)
+
+			newCost := solve(d, dp)
+			if newCost >= 0 {
+				newCost += moveCost
+				if minCost < 0 || (newCost < minCost) {
+					minCost = newCost
+				}
 			}
 		}
 	}
 
-	return minCost, minPath
+	dp[c] = minCost
+
+	return minCost
 }
 
 func run() error {
@@ -274,20 +280,10 @@ func run() error {
 
 	cave.Print()
 
-	totalCost, moves := solve(cave, 0, nil)
-
-	cost := 0
-	dave := cave
-	dave.Print()
-	for i, m := range moves {
-		fmt.Println("Move", i, m)
-		dave, cost = dave.Move(m[0], m[1])
-		fmt.Println("Cost", cost)
-		dave.Print()
-	}
+	dp := make(map[Cave]int)
+	totalCost := solve(cave, dp)
 
 	fmt.Println(totalCost)
-	fmt.Println(moves)
 
 	return nil
 }
