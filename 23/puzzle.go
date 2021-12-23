@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"runtime/pprof"
 	"strings"
 )
 
@@ -323,6 +324,18 @@ func run() error {
 }
 
 func main() {
+	profileEnv := os.Getenv("PROFILE")
+	if profileEnv != "" {
+		f, err := os.Create(profileEnv)
+		if err != nil {
+			fmt.Println("ERROR:", err)
+			os.Exit(1)
+		}
+
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	err := run()
 	if err != nil {
 		fmt.Println("ERROR:", err)
